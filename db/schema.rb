@@ -14,11 +14,12 @@
 ActiveRecord::Schema.define(:version => 20161220060958) do
 
   create_table "otps", :force => true do |t|
-    t.string   "phone_number", :limit => 15, :null => false
-    t.string   "service",                    :null => false
-    t.datetime "generated_at",               :null => false
-    t.datetime "created_at",                 :null => false
-    t.datetime "updated_at",                 :null => false
+    t.string   "phone_number", :limit => 15,                    :null => false
+    t.string   "service",                                       :null => false
+    t.boolean  "used",                       :default => false
+    t.datetime "generated_at",                                  :null => false
+    t.datetime "created_at",                                    :null => false
+    t.datetime "updated_at",                                    :null => false
   end
 
 end

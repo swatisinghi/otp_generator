@@ -6,30 +6,48 @@ RSpec.describe OtpController, :type => :controller do
   context "VERIFY otp" do
 
   	before do
-	  #This entry is cleaned after the test run - spec_helper.rb  		
+	  #This entry is cleaned after the test run - see spec_helper.rb
 	  @otp = create :otp
 	end
 
-    it "should return true if valid" do
-      get :verify, :phone_number => @otp.phone_number, :service => @otp.service, :otp => @otp.id
-      response_body = JSON.parse(response.body)
+    it "should return true and mark otp used if valid" do
+      put :update, { :id => @otp.phone_number, :service => @otp.service, :otp => @otp.id }
       expect(response.status).to eq(200)
-      expect(response_body["verfified"]).to eq(true)
+      expect(@otp.reload.used).to eq(true)
     end
 
-    it "should return false if invalid" do
-      get :verify, :phone_number => @otp.phone_number, :service => @otp.service, :otp => "111" #For now hard coding a incorrect id
+    it "should return 422 if invalid" do
+      put :update, { :id => @otp.phone_number, :service => @otp.service, :otp => 111 } #For now hard coding a incorrect id
       response_body = JSON.parse(response.body)
-      expect(response.status).to eq(200)
-      expect(response_body["verfified"]).to eq(false)
+      expect(response.status).to eq(422)
+      expect(response_body["error_code"]).to eq(1)
+      expect(response_body["error_message"]).to eq("Invalid OTP")
     end
 
-    it "should return false if otp has expired" do
+    it "should return 422 if otp is already used" do
+      @new_otp = create :otp, :used => true
+      put :update, { :id => @new_otp.phone_number, :service => @new_otp.service, :otp => @new_otp.id }
+      response_body = JSON.parse(response.body)
+      expect(response.status).to eq(422)
+      expect(response_body["error_code"]).to eq(2)
+      expect(response_body["error_message"]).to eq("OTP already used")
+    end
+
+    it "should return 422 if otp has expired" do
       @new_otp = create :otp, :generated_at => Time.now - 1000	
-      get :verify, :phone_number => @new_otp.phone_number, :service => @new_otp.service, :otp => @new_otp.id
+      put :update, { :id => @new_otp.phone_number, :service => @new_otp.service, :otp => @new_otp.id }
       response_body = JSON.parse(response.body)
-      expect(response.status).to eq(200)
-      expect(response_body["verfified"]).to eq(false)
+      expect(response.status).to eq(422)
+      expect(response_body["error_code"]).to eq(3)
+      expect(response_body["error_message"]).to eq("OTP expired")
+    end
+
+    it "should return 422 if request is malformed" do
+      put :update, { :id => @otp.phone_number, :service => @otp.service }
+      response_body = JSON.parse(response.body)
+      expect(response.status).to eq(422)
+      expect(response_body["error_code"]).to eq(0)
+      expect(response_body["error_message"]).to eq("Please send otp in request")
     end
   end
 
